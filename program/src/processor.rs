@@ -2,8 +2,10 @@ use solana_program::{account_info::AccountInfo, entrypoint::ProgramResult, msg, 
 
 use crate::instructions::FaucetInstruction;
 use initialize_faucet::initialize_faucet;
+use request_tokens::request_tokens;
 
 mod initialize_faucet;
+mod request_tokens;
 
 pub struct Processor {}
 
@@ -19,6 +21,10 @@ impl Processor {
             FaucetInstruction::InitializeFaucet { amount } => {
                 initialize_faucet(program_id, accounts, amount)
                     .expect("failed to initialize faucet");
+            }
+            FaucetInstruction::RequestTokens => {
+                msg!("instruction: request tokens");
+                request_tokens(program_id, accounts).expect("failed to request tokens");
             }
         }
 

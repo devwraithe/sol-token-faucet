@@ -1,4 +1,4 @@
-use borsh::BorshSerialize;
+use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
     account_info::{AccountInfo, next_account_info},
     entrypoint::ProgramResult,
@@ -51,7 +51,7 @@ pub fn initialize_faucet(
     // update the faucet state
     let faucet_state = FaucetState {
         admin: *admin_account.key,
-        amount: amount, // amount to fund
+        amount: amount, // amount to distribute
     };
     faucet_state.serialize(&mut &mut faucet_account.data.borrow_mut()[..])?;
 
