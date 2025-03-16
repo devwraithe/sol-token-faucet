@@ -1,85 +1,39 @@
 use sol_token_faucet::instructions::FaucetInstruction;
-use sol_token_faucet::process_instruction;
 use sol_token_faucet::state::{BorshDeserialize, FaucetState};
 use solana_program::{
     instruction::{AccountMeta, Instruction},
     sysvar,
 };
 use solana_program_test::*;
-use solana_sdk::{
-    account::Account,
-    pubkey::Pubkey,
-    rent::Rent,
-    signature::{Signer, keypair::Keypair},
-    system_instruction,
-    transaction::Transaction,
-};
-use std::mem::size_of; // for size calculation
+use solana_sdk::msg;
+use solana_sdk::pubkey::Pubkey;
+use solana_sdk::signature::Keypair;
+use solana_sdk::{hash::Hash, signature::Signer, system_instruction, transaction::Transaction};
 
-#[tokio::test]
-async fn initialize_faucet() {
-    let program_id = Pubkey::new_unique();
-    let mut program_test = ProgramTest::default();
-    program_test.add_program(
-        "initialize_faucet",
-        program_id,
-        processor!(process_instruction),
-    );
+use crate::test_utils::*;
 
-    // generate admin & faucet keypairs
-    let admin_keypair = Keypair::new();
-    let faucet_keypair = Keypair::new();
+pub struct InitializeFaucet {
+    pub banks_client: BanksClient,
+    pub payer: Keypair,
+    pub recent_blockhash: Hash,
+    pub faucet_pubkey: Pubkey,
+    pub admin_keypair: Keypair,
+}
+
+pub async fn initialize_faucet() -> InitializeFaucet {
+    let test_ctx = setup_test_env().await;
+    let TestContext {
+        banks_client,
+        payer,
+        recent_blockhash,
+        faucet_keypair,
+        admin_keypair,
+        rent_exempt_balance,
+    } = test_ctx;
+
+    // generate keys
     let admin_pubkey = admin_keypair.pubkey();
     let faucet_pubkey = faucet_keypair.pubkey();
-
-    // calculate faucet rent-exempt balance
-    let space = size_of::<FaucetState>();
-    let rent = Rent::default();
-    let rent_exempt_balance = rent.minimum_balance(space);
-
-    // add accounts to program test
-    program_test.add_account(
-        faucet_pubkey,
-        Account {
-            lamports: rent_exempt_balance,
-            owner: program_id,    // program owned
-            data: vec![0; space], // pre-allocate space
-            executable: false,
-            ..Account::default()
-        },
-    );
-    // program_test.add_account(
-    //     admin_pubkey,
-    //     Account {
-    //         lamports: 10_000_000_000, // 10 SOL
-    //         owner: solana_program::system_program::id(),
-    //         ..Account::default()
-    //     },
-    // );
-
-    // start test environment
-    let (banks_client, payer, recent_blockhash) = program_test.start().await;
-
-    // create admin account
-    let create_admin_ix = system_instruction::create_account(
-        &payer.pubkey(),
-        &admin_pubkey,
-        rent.minimum_balance(0), // min bal for acct with no data
-        0,
-        &solana_program::system_program::id(),
-    );
-
-    let create_admin_tx = Transaction::new_signed_with_payer(
-        &[create_admin_ix],
-        Some(&payer.pubkey()),
-        &[&payer, &admin_keypair],
-        recent_blockhash,
-    );
-
-    banks_client
-        .process_transaction(create_admin_tx)
-        .await
-        .unwrap();
 
     // fund admin account
     let fund_admin_ix =
@@ -97,14 +51,16 @@ async fn initialize_faucet() {
         .await
         .unwrap();
 
+    msg!("admin account funded");
+
     // initialize faucet
-    let init_amount = 1_000_000_000;
+    let init_amount = 1_000_000_000; // 1 sol
     let instruction_data = FaucetInstruction::InitializeFaucet {
         amount: init_amount,
     };
 
     let instruction = Instruction::new_with_borsh(
-        program_id,
+        PROGRAM_ID,
         &instruction_data,
         vec![
             AccountMeta::new(faucet_pubkey, false),
@@ -126,10 +82,14 @@ async fn initialize_faucet() {
         recent_blockhash,
     );
 
+    msg!("before initialized");
+
     banks_client
         .process_transaction(fund_faucet_tx)
         .await
         .unwrap();
+
+    msg!("after initialized");
 
     // verify faucet state
     let faucet_account = banks_client
@@ -141,11 +101,26 @@ async fn initialize_faucet() {
     let faucet_state = FaucetState::try_from_slice(&faucet_account.data).unwrap();
     assert_eq!(faucet_state.admin, admin_pubkey);
     assert_eq!(faucet_state.amount, init_amount);
+    msg!("Faucet account data length: {}", faucet_account.data.len());
 
     // verify faucet sol
     let faucet_balance = banks_client.get_balance(faucet_pubkey).await.unwrap();
+    println!(
+        "Faucet balance: {}, Expected: {}",
+        faucet_balance,
+        rent_exempt_balance + init_amount
+    );
     assert!(
         faucet_balance >= rent_exempt_balance + init_amount,
         "faucet was not properly funded!"
     );
+
+    // return
+    InitializeFaucet {
+        banks_client,
+        payer,
+        recent_blockhash,
+        faucet_pubkey,
+        admin_keypair,
+    }
 }
