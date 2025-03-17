@@ -5,6 +5,7 @@ use solana_program::program_error::ProgramError;
 pub enum FaucetInstruction {
     InitializeFaucet { amount: u64 }, // instruction variant
     RequestTokens,
+    RefillFaucet { amount: u64 },
 }
 
 // payload to represent instruction data
@@ -13,7 +14,7 @@ struct InitFaucetPayload {
     amount: u64,
 }
 #[derive(BorshSerialize, BorshDeserialize)]
-struct RequestTokens {
+struct RefillFaucet {
     amount: u64,
 }
 
@@ -31,6 +32,12 @@ impl FaucetInstruction {
                 }
             }
             1 => Self::RequestTokens,
+            2 => {
+                let payload = RefillFaucet::try_from_slice(rest).unwrap();
+                Self::RefillFaucet {
+                    amount: payload.amount,
+                }
+            }
             _ => return Err(ProgramError::InvalidInstructionData),
         })
     }
