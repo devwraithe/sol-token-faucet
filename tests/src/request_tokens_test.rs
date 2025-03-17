@@ -1,27 +1,26 @@
-use sol_token_faucet::{instructions::FaucetInstruction, process_instruction};
+use sol_token_faucet::instructions::FaucetInstruction;
 use solana_program::system_program;
 use solana_program_test::*;
 use solana_sdk::{
     instruction::{AccountMeta, Instruction},
-    pubkey::Pubkey,
     signature::{Signer, keypair::Keypair},
     transaction::Transaction,
 };
 
 use crate::{
     initialize_faucet_test::{InitializeFaucet, initialize_faucet},
-    test_utils::{PROGRAM_ID, TestContext, setup_test_env},
+    test_utils::PROGRAM_ID,
 };
 
 #[tokio::test]
 async fn request_tokens() {
-    let initialize_faucet = initialize_faucet().await;
+    let initialize_faucet = initialize_faucet(10_000_000_000, 1_000_000_000).await;
     let InitializeFaucet {
         banks_client,
         payer,
         recent_blockhash,
         faucet_pubkey,
-        admin_keypair,
+        admin_keypair: _,
     } = initialize_faucet;
 
     let user_keypair = Keypair::new();

@@ -19,11 +19,11 @@ pub fn request_tokens(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramR
 
     // verify faucet balance
     if **faucet_account.lamports.borrow() == 0 {
-        msg!("faucet account is empty");
+        msg!("faucet account is empty. refill required");
         return Err(InsufficientFunds);
     }
 
-    // verify ownership
+    // verify program ownership
     if faucet_account.owner != program_id {
         msg!("faucet account is not owned by the program");
         return Err(IncorrectProgramId);
@@ -32,13 +32,8 @@ pub fn request_tokens(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramR
     // load the faucet state
     let faucet_state = FaucetState::try_from_slice(&faucet_account.data.borrow())?;
 
-    msg!("Expected program ID: {:?}", program_id);
-    msg!("Actual owner of faucet account: {:?}", faucet_account.owner);
-
     // amount to transfer on each request
     let request_amount = faucet_state.amount;
-    println!("faucet state amount: {:?}", faucet_state.amount);
-    println!("request_amount: {:?}", request_amount);
 
     // transfer sol from faucet to user
     **faucet_account.try_borrow_mut_lamports()? -= request_amount;
@@ -50,6 +45,16 @@ pub fn request_tokens(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramR
         request_amount,
         user_account.key
     );
+
+    // trigger refill if faucet is running low
+    let faucet_balance = **faucet_account.lamports.borrow();
+    let refill_threshold = 500_000_000;
+    if faucet_balance < refill_threshold {
+        msg!(
+            "faucet balance is low ({:?}). admin refill required",
+            faucet_balance,
+        );
+    }
 
     Ok(())
 }

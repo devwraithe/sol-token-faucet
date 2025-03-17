@@ -20,7 +20,10 @@ pub struct InitializeFaucet {
     pub admin_keypair: Keypair,
 }
 
-pub async fn initialize_faucet() -> InitializeFaucet {
+pub async fn initialize_faucet(
+    admin_funding_amount: u64,
+    faucet_init_amount: u64,
+) -> InitializeFaucet {
     let test_ctx = setup_test_env().await;
     let TestContext {
         banks_client,
@@ -37,7 +40,7 @@ pub async fn initialize_faucet() -> InitializeFaucet {
 
     // fund admin account
     let fund_admin_ix =
-        system_instruction::transfer(&payer.pubkey(), &admin_pubkey, 10_000_000_000);
+        system_instruction::transfer(&payer.pubkey(), &admin_pubkey, admin_funding_amount);
 
     let fund_admin_tx = Transaction::new_signed_with_payer(
         &[fund_admin_ix],
@@ -54,9 +57,8 @@ pub async fn initialize_faucet() -> InitializeFaucet {
     msg!("admin account funded");
 
     // initialize faucet
-    let init_amount = 1_000_000_000; // 1 sol
     let instruction_data = FaucetInstruction::InitializeFaucet {
-        amount: init_amount,
+        amount: faucet_init_amount,
     };
 
     let instruction = Instruction::new_with_borsh(
@@ -73,7 +75,8 @@ pub async fn initialize_faucet() -> InitializeFaucet {
     banks_client.process_transaction(transaction).await.unwrap();
 
     // fund faucet account
-    let fund_faucet_ix = system_instruction::transfer(&admin_pubkey, &faucet_pubkey, init_amount);
+    let fund_faucet_ix =
+        system_instruction::transfer(&admin_pubkey, &faucet_pubkey, faucet_init_amount);
 
     let fund_faucet_tx = Transaction::new_signed_with_payer(
         &[fund_faucet_ix],
@@ -100,7 +103,7 @@ pub async fn initialize_faucet() -> InitializeFaucet {
 
     let faucet_state = FaucetState::try_from_slice(&faucet_account.data).unwrap();
     assert_eq!(faucet_state.admin, admin_pubkey);
-    assert_eq!(faucet_state.amount, init_amount);
+    assert_eq!(faucet_state.amount, faucet_init_amount);
     msg!("Faucet account data length: {}", faucet_account.data.len());
 
     // verify faucet sol
@@ -108,10 +111,10 @@ pub async fn initialize_faucet() -> InitializeFaucet {
     println!(
         "Faucet balance: {}, Expected: {}",
         faucet_balance,
-        rent_exempt_balance + init_amount
+        rent_exempt_balance + faucet_init_amount
     );
     assert!(
-        faucet_balance >= rent_exempt_balance + init_amount,
+        faucet_balance >= rent_exempt_balance + faucet_init_amount,
         "faucet was not properly funded!"
     );
 
