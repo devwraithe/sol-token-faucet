@@ -7,7 +7,7 @@ use crate::initialize_faucet_test::{InitializeFaucet, initialize_faucet};
 async fn refill_faucet() {
     let initialize_faucet = initialize_faucet(10_000_000_000, 100_000).await;
     let InitializeFaucet {
-        banks_client,
+       mut banks_client,
         payer: _,
         recent_blockhash,
         faucet_pubkey,

@@ -1,10 +1,12 @@
 use solana_program::{
-    account_info::{AccountInfo, next_account_info},
+    account_info::{next_account_info, AccountInfo},
+    entrypoint::ProgramResult,
+    msg,
     program::invoke,
     program_error::ProgramError::*,
+    pubkey::Pubkey,
     system_instruction,
 };
-use solana_sdk::{entrypoint::ProgramResult, msg, pubkey::Pubkey};
 
 pub fn refill_faucet(program_id: &Pubkey, accounts: &[AccountInfo], amount: u64) -> ProgramResult {
     msg!("instruction: refill faucet");

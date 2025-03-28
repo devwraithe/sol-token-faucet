@@ -3,12 +3,12 @@ use solana_program::system_program;
 use solana_program_test::*;
 use solana_sdk::{
     instruction::{AccountMeta, Instruction},
-    signature::{Signer, keypair::Keypair},
+    signature::{keypair::Keypair, Signer},
     transaction::Transaction,
 };
 
 use crate::{
-    initialize_faucet_test::{InitializeFaucet, initialize_faucet},
+    initialize_faucet_test::{initialize_faucet, InitializeFaucet},
     test_utils::PROGRAM_ID,
 };
 
@@ -16,7 +16,7 @@ use crate::{
 async fn request_tokens() {
     let initialize_faucet = initialize_faucet(10_000_000_000, 1_000_000_000).await;
     let InitializeFaucet {
-        banks_client,
+        mut banks_client,
         payer,
         recent_blockhash,
         faucet_pubkey,
