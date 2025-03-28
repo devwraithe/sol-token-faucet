@@ -7,7 +7,7 @@ use solana_sdk::{
     msg,
     pubkey::Pubkey,
     rent::Rent,
-    signature::{Signer, keypair::Keypair},
+    signature::{keypair::Keypair, Signer},
     system_instruction,
     transaction::Transaction,
 };
@@ -57,7 +57,7 @@ pub async fn setup_test_env() -> TestContext {
     );
 
     // start test environment
-    let (banks_client, payer, recent_blockhash) = program_test.start().await;
+    let (mut banks_client, payer, recent_blockhash) = program_test.start().await;
 
     // create admin account
     let create_admin_ix = system_instruction::create_account(

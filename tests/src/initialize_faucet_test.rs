@@ -26,7 +26,7 @@ pub async fn initialize_faucet(
 ) -> InitializeFaucet {
     let test_ctx = setup_test_env().await;
     let TestContext {
-        banks_client,
+        mut banks_client,
         payer,
         recent_blockhash,
         faucet_keypair,
